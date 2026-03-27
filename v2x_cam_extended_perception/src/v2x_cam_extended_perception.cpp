@@ -24,8 +24,11 @@
 
 namespace autoware::v2x_cam_extended_perception
 {
-V2XCAMExtendedPerception::V2XCAMExtendedPerception() : rclcpp::Node("v2x_cam_extended_perception")
+V2XCAMExtendedPerception::V2XCAMExtendedPerception(const rclcpp::NodeOptions & node_options)
+: rclcpp::Node("v2x_cam_extended_perception", node_options)
 {
+  RCLCPP_INFO(this->get_logger(), "Starting v2x_cam_extended_perception class...");
+
   // Subscribe to map_projector_info topic
   const auto adaptor = autoware::component_interface_utils::NodeAdaptor(this);
   adaptor.init_sub(
@@ -34,11 +37,11 @@ V2XCAMExtendedPerception::V2XCAMExtendedPerception() : rclcpp::Node("v2x_cam_ext
     });
 
   cam_sub_ = this->create_subscription<etsi_its_cam_msgs::msg::CAM>(
-    "cam/out", rclcpp::QoS{10},
+    "cam/out", rclcpp::QoS{1},
     std::bind(&V2XCAMExtendedPerception::cam_callback, this, std::placeholders::_1));
 
-  tracked_objects_pub_ =
-    this->create_publisher<autoware_perception_msgs::msg::TrackedObjects>("tracked_object", 10);
+  tracked_objects_pub_ = this->create_publisher<autoware_perception_msgs::msg::TrackedObjects>(
+    "/perception/object_recognition/tracking/objects", rclcpp::QoS{1});
 }
 
 void V2XCAMExtendedPerception::callback_map_projector_info(
@@ -50,6 +53,8 @@ void V2XCAMExtendedPerception::callback_map_projector_info(
 
 void V2XCAMExtendedPerception::cam_callback(const etsi_its_cam_msgs::msg::CAM::SharedPtr msg)
 {
+  RCLCPP_WARN(this->get_logger(), "CAM RECEIVED!");
+
   // Return immediately if map_projector_info has not been received yet.
   if (!received_map_projector_info_) {
     RCLCPP_WARN_THROTTLE(
@@ -76,8 +81,12 @@ void V2XCAMExtendedPerception::cam_callback(const etsi_its_cam_msgs::msg::CAM::S
     projector_info_.vertical_datum);
 
   tf2::Quaternion cam_orientation;
-  double yaw = DEG2RAD(
-    etsi_its_cam_msgs::access::getHeading(*msg));  // ? Check if is need to convert the heading
+  double yaw =
+    M_PI_2 -
+    DEG2RAD(
+      etsi_its_cam_msgs::access::getHeading(*msg));  // Converting GNSS heading to ENU
+
+  yaw = atan2(sin(yaw), cos(yaw));
 
   cam_orientation.setRPY(0.0, 0.0, yaw);
 
@@ -88,6 +97,23 @@ void V2XCAMExtendedPerception::cam_callback(const etsi_its_cam_msgs::msg::CAM::S
   cam_pose_with_covariance.covariance = {};  // TODO
 
   cam_tracked_object.kinematics.pose_with_covariance = cam_pose_with_covariance;
+
+  cam_tracked_object.kinematics.orientation_availability = true;
+
+  /// Twist
+
+  cam_tracked_object.kinematics.twist_with_covariance.twist.linear.x =
+    etsi_its_cam_msgs::access::getSpeed(*msg);
+
+  cam_tracked_object.kinematics.twist_with_covariance.twist.angular.z =
+    DEG2RAD(etsi_its_cam_msgs::access::getYawRate(*msg));
+
+  /// Accel
+
+  cam_tracked_object.kinematics.acceleration_with_covariance.accel.linear.x =
+    etsi_its_cam_msgs::access::getLongitudinalAcceleration(*msg);
+  cam_tracked_object.kinematics.acceleration_with_covariance.accel.linear.y =
+    etsi_its_cam_msgs::access::getLateralAcceleration(*msg);  // ? Left is positive
 
   /// Set object type
   autoware_perception_msgs::msg::ObjectClassification cam_classification;
@@ -124,8 +150,11 @@ void V2XCAMExtendedPerception::cam_callback(const etsi_its_cam_msgs::msg::CAM::S
 
   autoware_perception_msgs::msg::TrackedObjects cam_tracked_objects;
 
-  // cam_tracked_objects.header =
+  cam_tracked_objects.header.stamp = this->now();
+  cam_tracked_objects.header.frame_id = "map";  // World frame ID
   cam_tracked_objects.objects.emplace_back(cam_tracked_object);
+
+  tracked_objects_pub_->publish(cam_tracked_objects);
 }
 
 double V2XCAMExtendedPerception::getCAMObjectHeight(
@@ -293,3 +322,6 @@ uint8_t V2XCAMExtendedPerception::etsi_to_autoware_object_class(const uint8_t et
   return autoware_perception_msgs::msg::ObjectClassification::UNKNOWN;
 }
 }  // namespace autoware::v2x_cam_extended_perception
+
+#include <rclcpp_components/register_node_macro.hpp>
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::v2x_cam_extended_perception::V2XCAMExtendedPerception)

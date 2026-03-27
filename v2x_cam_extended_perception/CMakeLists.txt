@@ -24,7 +24,6 @@ set(V2X_CAM_EXTENDED_PERCEPTION_POSER_HEADERS
 
 ament_auto_add_library(v2x_cam_extended_perception_node SHARED
   src/v2x_cam_extended_perception.cpp
-  src/v2x_cam_extended_perception_node.cpp
   ${V2X_CAM_EXTENDED_PERCEPTION_POSER_HEADERS}
 )
 
@@ -33,7 +32,7 @@ target_link_libraries(v2x_cam_extended_perception_node
 )
 
 rclcpp_components_register_node(v2x_cam_extended_perception_node
-  PLUGIN "autoware::v2x_cam_extended_perception_node::V2XCAMExtendedPerception"
+  PLUGIN "autoware::v2x_cam_extended_perception::V2XCAMExtendedPerception"
   EXECUTABLE v2x_cam_extended_perception
 )
 

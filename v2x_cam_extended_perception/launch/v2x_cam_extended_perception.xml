@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+  <node pkg="v2x_cam_extended_perception" exec="v2x_cam_extended_perception" name="v2x_cam_extended_perception" output="both">
+  </node>
+</launch>

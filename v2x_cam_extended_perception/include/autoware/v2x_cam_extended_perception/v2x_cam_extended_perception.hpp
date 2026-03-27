@@ -16,7 +16,7 @@ class V2XCAMExtendedPerception : public rclcpp::Node
   using MapProjectorInfo = autoware::component_interface_specs_universe::map::MapProjectorInfo;
 
 public:
-  explicit V2XCAMExtendedPerception();
+  explicit V2XCAMExtendedPerception(const rclcpp::NodeOptions & node_options);
 
   void cam_callback(const etsi_its_cam_msgs::msg::CAM::SharedPtr msg);
 
