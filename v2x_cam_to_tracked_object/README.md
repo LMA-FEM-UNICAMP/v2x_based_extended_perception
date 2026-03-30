@@ -1,8 +1,6 @@
-# v2x_cam_extended_perception
+# v2x_cam_to_tracked_object
 
-ETSI CAM message perception for Autoware.
-
-> Under development...
+ETSI CAM message to Autoware Tracked Objects .
 
 ## Acknowledgments
 
