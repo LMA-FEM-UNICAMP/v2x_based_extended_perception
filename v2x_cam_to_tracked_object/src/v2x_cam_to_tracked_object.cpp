@@ -158,10 +158,10 @@ void V2XCAM2TrackedObject::cam_callback(const etsi_its_cam_msgs::msg::CAM::Share
 
   std::memset(cam_uuid.uuid.data(), 0, cam_uuid.uuid.size());
 
-  cam_uuid.uuid[0] = (cam_station_id >> 24) & 0xFF;
-  cam_uuid.uuid[1] = (cam_station_id >> 16) & 0xFF;
-  cam_uuid.uuid[2] = (cam_station_id >> 8) & 0xFF;
-  cam_uuid.uuid[3] = (cam_station_id) & 0xFF;
+  cam_uuid.uuid[3] = (cam_station_id >> 24) & 0xFF;
+  cam_uuid.uuid[2] = (cam_station_id >> 16) & 0xFF;
+  cam_uuid.uuid[1] = (cam_station_id >> 8) & 0xFF;
+  cam_uuid.uuid[0] = (cam_station_id) & 0xFF;
 
   cam_tracked_object.object_id = cam_uuid;
 

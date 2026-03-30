@@ -18,13 +18,13 @@ find_library(GeographicLib_LIBRARIES
   NAMES Geographic
 )
 
-set(V2X_CAM_EXTENDED_PERCEPTION_POSER_HEADERS
+set(V2X_CAM_TO_TRACKED_OBJECT_HEADERS
   include/autoware/v2x_cam_to_tracked_object/v2x_cam_to_tracked_object.hpp
 )
 
 ament_auto_add_library(v2x_cam_to_tracked_object_node SHARED
   src/v2x_cam_to_tracked_object.cpp
-  ${V2X_CAM_EXTENDED_PERCEPTION_POSER_HEADERS}
+  ${V2X_CAM_TO_TRACKED_OBJECT_HEADERS}
 )
 
 target_link_libraries(v2x_cam_to_tracked_object_node
