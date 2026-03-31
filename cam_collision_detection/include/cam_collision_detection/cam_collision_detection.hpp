@@ -18,7 +18,7 @@ class CAMCollisionDetection : public rclcpp::Node
   using PosePair = std::pair<geometry_msgs::msg::Pose, geometry_msgs::msg::Pose>;
 
 public:
-  CAMCollisionDetection();
+  CAMCollisionDetection(const rclcpp::NodeOptions& );
 
   void predicted_objects_callback(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr);
 

@@ -11,6 +11,12 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
+
+  <depend>geometry_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
+  <depend>autoware_perception_msgs</depend>  
+
   <exec_depend>autoware_adapi_adaptors</exec_depend>
   <exec_depend>autoware_global_parameter_loader</exec_depend>
   <exec_depend>python3-bson</exec_depend>

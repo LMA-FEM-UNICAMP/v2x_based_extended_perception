@@ -4,7 +4,8 @@
 
 namespace cam_collision_detection
 {
-CAMCollisionDetection::CAMCollisionDetection() : Node("cam_collision_detection")
+CAMCollisionDetection::CAMCollisionDetection(const rclcpp::NodeOptions& node_options)
+  : rclcpp::Node("cam_collision_detection", node_options)
 {
   this->declare_parameter<uint8_t>("info_threshold_s", 15);
   this->declare_parameter<uint8_t>("warn_threshold_s", 10);
@@ -117,9 +118,7 @@ uint16_t CAMCollisionDetection::getStationID(unique_identifier_msgs::msg::UUID o
 
 double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPath cv)
 {
-  double collision_distance;
-
-  for (int n = 0; n < ego.path.size(); n++)
+  for (std::size_t n = 0; n < ego.path.size(); n++)
   {
     double distance = getDistance(ego.path.at(n), cv.path.at(n));
 
@@ -134,9 +133,7 @@ double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPat
 
 double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPath cv, PosePair collision_points)
 {
-  double collision_distance;
-
-  for (int n = 0; n < ego.path.size(); n++)
+  for (std::size_t n = 0; n < ego.path.size(); n++)
   {
     double distance = getDistance(ego.path.at(n), cv.path.at(n));
 
