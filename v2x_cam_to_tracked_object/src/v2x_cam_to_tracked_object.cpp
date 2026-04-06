@@ -27,7 +27,7 @@ namespace autoware::v2x_cam_to_tracked_object
 V2XCAM2TrackedObject::V2XCAM2TrackedObject(const rclcpp::NodeOptions & node_options)
 : rclcpp::Node("v2x_cam_to_tracked_object", node_options)
 {
-  RCLCPP_INFO(this->get_logger(), "Starting v2x_cam_to_tracked_object class...");
+  RCLCPP_DEBUG(this->get_logger(), "Starting v2x_cam_to_tracked_object class...");
 
   // Subscribe to map_projector_info topic
   const auto adaptor = autoware::component_interface_utils::NodeAdaptor(this);

@@ -5,7 +5,7 @@
 namespace cam_collision_detection
 {
 CAMCollisionDetection::CAMCollisionDetection(const rclcpp::NodeOptions& node_options)
-  : rclcpp::Node("cam_collision_detection", node_options)
+  : rclcpp::Node("cam_collision_detector", node_options)
 {
   this->declare_parameter<uint8_t>("info_threshold_s", 15);
   this->declare_parameter<uint8_t>("warn_threshold_s", 10);
@@ -35,8 +35,12 @@ CAMCollisionDetection::CAMCollisionDetection(const rclcpp::NodeOptions& node_opt
 void CAMCollisionDetection::predicted_objects_callback(
     const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg)
 {
+  rclcpp::Time init_time;
+
   autoware_perception_msgs::msg::PredictedObject ego;
   autoware_perception_msgs::msg::PredictedObjects cvs;
+
+  ego.existence_probability = -1.0;
 
   for (auto& obj : msg->objects)
   {
@@ -48,6 +52,20 @@ void CAMCollisionDetection::predicted_objects_callback(
     {
       cvs.objects.emplace_back(obj);
     }
+  }
+
+  /// If ego object not received, skip
+  if (-1.0 == ego.existence_probability)
+  {
+    RCLCPP_WARN(this->get_logger(), "EGO object not found, waiting...");
+    return;
+  }
+
+  /// If CV CAM not received, skip
+  if (!cvs.objects.size())
+  {
+    RCLCPP_WARN(this->get_logger(), "CV objects not received, waiting...");
+    return;
   }
 
   geometry_msgs::msg::PoseArray collision_poses_array;
@@ -63,6 +81,7 @@ void CAMCollisionDetection::predicted_objects_callback(
       continue;
     }
 
+    /// Check all CV predicted paths with all ego predicted paths...
     for (auto& cv_path : cv.kinematics.predicted_paths)
     {
       for (auto& ego_path : ego.kinematics.predicted_paths)
@@ -100,6 +119,11 @@ void CAMCollisionDetection::predicted_objects_callback(
   }
 
   collision_points_pub_->publish(collision_poses_array);
+
+  rclcpp::Duration elapsed_time = this->now() - init_time;
+
+  RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Elapsed time for collision detection: %lf ms",
+                        elapsed_time.nanoseconds() * 1e6);
 }
 
 bool CAMCollisionDetection::isCVInRange(PredictedObject ego, PredictedObject cv)
@@ -113,6 +137,14 @@ bool CAMCollisionDetection::isCVInRange(PredictedObject ego, PredictedObject cv)
 
 uint16_t CAMCollisionDetection::getStationID(unique_identifier_msgs::msg::UUID object_id)
 {
+  /* StationID to UUID from v2x_cam_to_tracked_object.cpp:
+    cam_uuid.uuid[3] = (cam_station_id >> 24) & 0xFF;
+    cam_uuid.uuid[2] = (cam_station_id >> 16) & 0xFF;
+    cam_uuid.uuid[1] = (cam_station_id >> 8) & 0xFF;
+    cam_uuid.uuid[0] = (cam_station_id) & 0xFF;
+  */
+
+  /// UUID to StationID:
   return (object_id.uuid[3] << 24) + (object_id.uuid[2] << 16) + (object_id.uuid[1] << 8) + object_id.uuid[1];
 }
 
