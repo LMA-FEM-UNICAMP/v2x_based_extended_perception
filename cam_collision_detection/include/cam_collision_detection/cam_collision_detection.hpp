@@ -24,7 +24,7 @@ public:
 
   double getTimeToCollision(PredictedPath, PredictedPath);
 
-  double getTimeToCollision(PredictedPath, PredictedPath, PosePair);
+  double getTimeToCollision(PredictedPath, PredictedPath, PosePair &);
 
   double getDistance(geometry_msgs::msg::Pose, geometry_msgs::msg::Pose);
   bool willCollide(double);
@@ -43,6 +43,9 @@ private:
   uint8_t prediction_horizon_s_;
   double collision_threshold_m_;
   double process_distance_threshold_m_;
+
+
+  bool debug_;
 };
 }  // namespace cam_collision_detection
 #endif  // CAM_COLLISION_DETECTION__HPP_

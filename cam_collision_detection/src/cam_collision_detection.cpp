@@ -11,9 +11,10 @@ CAMCollisionDetection::CAMCollisionDetection(const rclcpp::NodeOptions& node_opt
   this->declare_parameter<uint8_t>("warn_threshold_s", 10);
   this->declare_parameter<uint8_t>("fatal_threshold_s", 5);
   this->declare_parameter<uint8_t>("prediction_horizon_s", 15);
-  this->declare_parameter<double>("collision_threshold_m", 2.5);
+  this->declare_parameter<double>("collision_threshold_m", 5.0);
   this->declare_parameter<double>("process_distance_threshold_m", 100);
   this->declare_parameter<uint16_t>("ego_station_id", 32);
+  this->declare_parameter<bool>("debug", true);  // TODO undo default value
 
   this->info_threshold_s_ = this->get_parameter("info_threshold_s").get_value<uint8_t>();
   this->warn_threshold_s_ = this->get_parameter("warn_threshold_s").get_value<uint8_t>();
@@ -22,6 +23,7 @@ CAMCollisionDetection::CAMCollisionDetection(const rclcpp::NodeOptions& node_opt
   this->collision_threshold_m_ = this->get_parameter("collision_threshold_m").get_value<double>();
   this->process_distance_threshold_m_ = this->get_parameter("process_distance_threshold_m").get_value<double>();
   this->ego_station_id_ = this->get_parameter("ego_station_id").get_value<uint16_t>();
+  this->debug_ = this->get_parameter("debug").get_value<bool>();
 
   using std::placeholders::_1;
   predicted_objects_sub_ = this->create_subscription<autoware_perception_msgs::msg::PredictedObjects>(
@@ -35,15 +37,26 @@ CAMCollisionDetection::CAMCollisionDetection(const rclcpp::NodeOptions& node_opt
 void CAMCollisionDetection::predicted_objects_callback(
     const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg)
 {
-  rclcpp::Time init_time;
+  rclcpp::Time init_time = this->now();
 
   autoware_perception_msgs::msg::PredictedObject ego;
   autoware_perception_msgs::msg::PredictedObjects cvs;
 
   ego.existence_probability = -1.0;
 
+  if (0 == msg->objects.size())
+  {
+    return;
+  }
+
   for (auto& obj : msg->objects)
   {
+    if (debug_)
+    {
+      ego_station_id_ = getStationID(obj.object_id);
+      debug_ = false;
+    }
+
     if (ego_station_id_ == getStationID(obj.object_id))
     {
       ego = obj;
@@ -68,62 +81,72 @@ void CAMCollisionDetection::predicted_objects_callback(
     return;
   }
 
-  geometry_msgs::msg::PoseArray collision_poses_array;
-
-  collision_poses_array.header.stamp = this->now();
-  collision_poses_array.header.set__frame_id("map");
-
   for (auto& cv : cvs.objects)
   {
+    geometry_msgs::msg::PoseArray collision_poses_array;
+    collision_poses_array.header.stamp = this->now();
+    collision_poses_array.header.set__frame_id("map");
+
     /// If CV is so far away, is not needed to check collision
     if (!isCVInRange(ego, cv))
     {
+      RCLCPP_INFO(this->get_logger(), "Vehicles to far away...");
       continue;
     }
 
     /// Check all CV predicted paths with all ego predicted paths...
     for (auto& cv_path : cv.kinematics.predicted_paths)
     {
+      double time_to_collision = INFINITY;
+      PosePair collision_points;
+
       for (auto& ego_path : ego.kinematics.predicted_paths)
       {
-        PosePair collision_points;
+        PosePair path_collision_points;
+        double path_time_to_collision = getTimeToCollision(ego_path, cv_path, path_collision_points);
 
-        double time_to_collision = getTimeToCollision(ego_path, cv_path, collision_points);
-
-        if (time_to_collision < 0.0)
+        if (path_time_to_collision > 0 && path_time_to_collision < time_to_collision)
         {
-          RCLCPP_INFO(this->get_logger(), "No collision detected.");
-          continue;
+          time_to_collision = path_time_to_collision;
+          collision_points = path_collision_points;
         }
-        else if (time_to_collision < fatal_threshold_s_)
-        {
-          RCLCPP_FATAL(this->get_logger(), "COLLISION (FATAL ALERT)!!!");
-        }
-        else if (time_to_collision < warn_threshold_s_)
-        {
-          RCLCPP_WARN(this->get_logger(), "COLLISION (WARN ALERT)!!!");
-        }
-        else if (time_to_collision < info_threshold_s_)
-        {
-          RCLCPP_INFO(this->get_logger(), "COLLISION (INFO ALERT)!!!");
-        }
-        else
-        {
-          RCLCPP_INFO(this->get_logger(), "Vehicles in collision route!!!");
-        }
-
-        collision_poses_array.poses.emplace_back(collision_points.first);
-        collision_poses_array.poses.emplace_back(collision_points.second);
       }
+
+      if (INFINITY == time_to_collision)
+      {
+        RCLCPP_INFO(this->get_logger(), "No collision detected.");
+        continue;
+      }
+      else if (time_to_collision < fatal_threshold_s_)
+      {
+        RCLCPP_FATAL(this->get_logger(), "COLLISION (FATAL ALERT)!!!");
+      }
+      else if (time_to_collision < warn_threshold_s_)
+      {
+        RCLCPP_WARN(this->get_logger(), "COLLISION (WARN ALERT)!!!");
+      }
+      else if (time_to_collision < info_threshold_s_)
+      {
+        RCLCPP_INFO(this->get_logger(), "COLLISION (INFO ALERT)!!!");
+      }
+      else
+      {
+        RCLCPP_INFO(this->get_logger(), "Vehicles in collision route!!!");
+      }
+
+      RCLCPP_INFO(this->get_logger(), "Time to collision: %.4f s.", time_to_collision);
+
+      collision_poses_array.poses.emplace_back(collision_points.first);
+      collision_poses_array.poses.emplace_back(collision_points.second);
     }
+
+    collision_points_pub_->publish(collision_poses_array);
+
+    rclcpp::Duration elapsed_time = this->now() - init_time;
+
+    RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Elapsed time for collision detection: %lf ms",
+                          elapsed_time.nanoseconds() * 1e6);
   }
-
-  collision_points_pub_->publish(collision_poses_array);
-
-  rclcpp::Duration elapsed_time = this->now() - init_time;
-
-  RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Elapsed time for collision detection: %lf ms",
-                        elapsed_time.nanoseconds() * 1e6);
 }
 
 bool CAMCollisionDetection::isCVInRange(PredictedObject ego, PredictedObject cv)
@@ -163,7 +186,7 @@ double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPat
   return -1.0;
 }
 
-double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPath cv, PosePair collision_points)
+double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPath cv, PosePair & collision_points)
 {
   for (std::size_t n = 0; n < ego.path.size(); n++)
   {
@@ -172,6 +195,8 @@ double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPat
     if (distance < collision_threshold_m_)
     {
       collision_points = std::make_pair(ego.path.at(n), cv.path.at(n));
+
+      RCLCPP_INFO(this->get_logger(), "*** Collision distance: %lf", distance);
 
       return (ego.time_step.nanosec * 1e-9) * (n + 1);
     }

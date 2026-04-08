@@ -30,7 +30,7 @@
   <!-- Tools -->
   <arg name="rviz" default="true" description="launch rviz"/>
   <arg name="rviz_config_name" default="v2x_cam_map_based_prediction.rviz" description="rviz config name"/>
-  <arg name="rviz_config" default="$(find-pkg-share v2x_cam_extended_perception)/rviz/$(var rviz_config_name)" description="rviz config path"/>
+  <arg name="rviz_config" default="$(find-pkg-share cam_collision_detection)/rviz/$(var rviz_config_name)" description="rviz config path"/>
   <let name="rviz_respawn" value="false" if="$(var scenario_simulation)"/>
   <let name="rviz_respawn" value="true" unless="$(var scenario_simulation)"/>
   <!-- Vcu emulation -->
@@ -87,10 +87,11 @@
   <!-- Simulator -->
   <group>
     <let name="launch_dummy_perception" value="false" if="$(var scenario_simulation)"/>
-    <let name="launch_dummy_perception" value="false" unless="$(var scenario_simulation)"/>
+    <let name="launch_dummy_perception" value="true" unless="$(var scenario_simulation)"/>
     <let name="launch_dummy_vehicle" value="false" if="$(var scenario_simulation)"/>
     <let name="launch_dummy_vehicle" value="true" unless="$(var scenario_simulation)"/>
     <let name="launch_scenario_simulator_v2_adapter" value="$(var scenario_simulation)"/>
+    <let name="scenario_simulation" value="true"/>
 
     <include file="$(find-pkg-share autoware_launch)/launch/components/tier4_simulator_component.launch.xml">
       <arg name="launch_dummy_perception" value="$(var launch_dummy_perception)"/>

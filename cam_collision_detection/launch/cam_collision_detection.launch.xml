@@ -3,12 +3,12 @@
 
   <!-- TODO COLISION DETECTOR -->
 
-  <node pkg="v2x_cam_to_tracked_object" exec="v2x_cam_to_tracked_object" name="v2x_cam_to_tracked_object" output="both">
+  <!-- <node pkg="v2x_cam_to_tracked_object" exec="v2x_cam_to_tracked_object" name="v2x_cam_to_tracked_object" output="both">
   </node>
 
   <node pkg="cam_collision_detection" exec="ego_cam.py" name="ego_cam" output="both">
     <remap from="/v2x/etsi_parser/cam/in" to="/cam/out"/>
-  </node>
+  </node> -->
 
   <include file="$(find-pkg-share cam_collision_detection)/launch/v2x_collision.launch.xml">
       <arg name="map_path" value="/home/toffanetto/autoware/Maps/vilma_autoware_maps/rua_daniel_hogan"/>
@@ -17,3 +17,4 @@
   </include>
 
 </launch>
+
