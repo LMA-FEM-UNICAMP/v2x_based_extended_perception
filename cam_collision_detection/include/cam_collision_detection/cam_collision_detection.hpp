@@ -18,17 +18,20 @@ class CAMCollisionDetection : public rclcpp::Node
   using PosePair = std::pair<geometry_msgs::msg::Pose, geometry_msgs::msg::Pose>;
 
 public:
-  CAMCollisionDetection(const rclcpp::NodeOptions& );
+  CAMCollisionDetection(const rclcpp::NodeOptions&);
 
   void predicted_objects_callback(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr);
 
   double getTimeToCollision(PredictedPath, PredictedPath);
 
-  double getTimeToCollision(PredictedPath, PredictedPath, PosePair &);
+  double getTimeToCollision(PredictedPath, PredictedPath, PosePair&);
 
-  double getDistance(geometry_msgs::msg::Pose, geometry_msgs::msg::Pose);
-  bool willCollide(double);
+  double getDistance(geometry_msgs::msg::Point, geometry_msgs::msg::Point);
+
+  bool willCollide(geometry_msgs::msg::Pose, geometry_msgs::msg::Pose);
+
   bool isCVInRange(PredictedObject, PredictedObject);
+
   uint16_t getStationID(unique_identifier_msgs::msg::UUID);
 
 private:
@@ -43,7 +46,6 @@ private:
   uint8_t prediction_horizon_s_;
   double collision_threshold_m_;
   double process_distance_threshold_m_;
-
 
   bool debug_;
 };

@@ -10,11 +10,11 @@ CAMCollisionDetection::CAMCollisionDetection(const rclcpp::NodeOptions& node_opt
   this->declare_parameter<uint8_t>("info_threshold_s", 15);
   this->declare_parameter<uint8_t>("warn_threshold_s", 10);
   this->declare_parameter<uint8_t>("fatal_threshold_s", 5);
-  this->declare_parameter<uint8_t>("prediction_horizon_s", 15);
-  this->declare_parameter<double>("collision_threshold_m", 5.0);
+  this->declare_parameter<uint8_t>("prediction_horizon_s", 20);
+  this->declare_parameter<double>("collision_threshold_m", 2.0);
   this->declare_parameter<double>("process_distance_threshold_m", 100);
   this->declare_parameter<uint16_t>("ego_station_id", 32);
-  this->declare_parameter<bool>("debug", true);  // TODO undo default value
+  this->declare_parameter<bool>("debug", true);
 
   this->info_threshold_s_ = this->get_parameter("info_threshold_s").get_value<uint8_t>();
   this->warn_threshold_s_ = this->get_parameter("warn_threshold_s").get_value<uint8_t>();
@@ -90,34 +90,37 @@ void CAMCollisionDetection::predicted_objects_callback(
     /// If CV is so far away, is not needed to check collision
     if (!isCVInRange(ego, cv))
     {
-      RCLCPP_INFO(this->get_logger(), "Vehicles to far away...");
+      RCLCPP_INFO(this->get_logger(), "Vehicles so far away...");
       continue;
     }
+
+    double time_to_collision = INFINITY;
+    PosePair collision_points;
 
     /// Check all CV predicted paths with all ego predicted paths...
     for (auto& cv_path : cv.kinematics.predicted_paths)
     {
-      double time_to_collision = INFINITY;
-      PosePair collision_points;
-
       for (auto& ego_path : ego.kinematics.predicted_paths)
       {
         PosePair path_collision_points;
         double path_time_to_collision = getTimeToCollision(ego_path, cv_path, path_collision_points);
 
+        /// Search the earliest collision
         if (path_time_to_collision > 0 && path_time_to_collision < time_to_collision)
         {
           time_to_collision = path_time_to_collision;
           collision_points = path_collision_points;
         }
       }
+    }
 
-      if (INFINITY == time_to_collision)
-      {
-        RCLCPP_INFO(this->get_logger(), "No collision detected.");
-        continue;
-      }
-      else if (time_to_collision < fatal_threshold_s_)
+    if (INFINITY == time_to_collision)
+    {
+      RCLCPP_INFO(this->get_logger(), "No collision detected.");
+    }
+    else
+    {
+      if (time_to_collision < fatal_threshold_s_)
       {
         RCLCPP_FATAL(this->get_logger(), "COLLISION (FATAL ALERT)!!!");
       }
@@ -153,9 +156,17 @@ bool CAMCollisionDetection::isCVInRange(PredictedObject ego, PredictedObject cv)
 {
   //* If distance is lower the the distance that the CV will drive with the actual speed over the
   //*   prediction horizon, then it is in range.
-  return getDistance(ego.kinematics.initial_pose_with_covariance.pose,
-                     cv.kinematics.initial_pose_with_covariance.pose) <=
-         cv.kinematics.initial_twist_with_covariance.twist.linear.x * prediction_horizon_s_;
+
+  double distance = getDistance(ego.kinematics.initial_pose_with_covariance.pose.position,
+                                cv.kinematics.initial_pose_with_covariance.pose.position);
+
+  double prediction_range = (cv.kinematics.initial_twist_with_covariance.twist.linear.x +
+                             ego.kinematics.initial_twist_with_covariance.twist.linear.x) *
+                            prediction_horizon_s_;
+
+  RCLCPP_DEBUG(this->get_logger(), "\nDistance: %lf | Prediction range: %lf", distance, prediction_range);
+
+  return distance <= prediction_range;
 }
 
 uint16_t CAMCollisionDetection::getStationID(unique_identifier_msgs::msg::UUID object_id)
@@ -175,9 +186,7 @@ double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPat
 {
   for (std::size_t n = 0; n < ego.path.size(); n++)
   {
-    double distance = getDistance(ego.path.at(n), cv.path.at(n));
-
-    if (distance < collision_threshold_m_)
+    if (willCollide(ego.path.at(n), cv.path.at(n)))
     {
       return (ego.time_step.nanosec * 1e-9) * (n + 1);
     }
@@ -186,18 +195,13 @@ double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPat
   return -1.0;
 }
 
-double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPath cv, PosePair & collision_points)
+double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPath cv, PosePair& collision_points)
 {
   for (std::size_t n = 0; n < ego.path.size(); n++)
   {
-    double distance = getDistance(ego.path.at(n), cv.path.at(n));
-
-    if (distance < collision_threshold_m_)
+    if (willCollide(ego.path.at(n), cv.path.at(n)))
     {
       collision_points = std::make_pair(ego.path.at(n), cv.path.at(n));
-
-      RCLCPP_INFO(this->get_logger(), "*** Collision distance: %lf", distance);
-
       return (ego.time_step.nanosec * 1e-9) * (n + 1);
     }
   }
@@ -205,16 +209,16 @@ double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPat
   return -1.0;
 }
 
-double CAMCollisionDetection::getDistance(geometry_msgs::msg::Pose ego, geometry_msgs::msg::Pose cv)
+double CAMCollisionDetection::getDistance(geometry_msgs::msg::Point ego, geometry_msgs::msg::Point cv)
 {
-  return sqrt((ego.position.x - cv.position.x) * (ego.position.x - cv.position.x) +
-              (ego.position.y - cv.position.y) * (ego.position.y - cv.position.y) +
-              (ego.position.z - cv.position.z) * (ego.position.z - cv.position.z));
+  return sqrt((ego.x - cv.x) * (ego.x - cv.x) + (ego.y - cv.y) * (ego.y - cv.y) + (ego.z - cv.z) * (ego.z - cv.z));
 }
 
-bool CAMCollisionDetection::willCollide(double distance)
+bool CAMCollisionDetection::willCollide(geometry_msgs::msg::Pose ego, geometry_msgs::msg::Pose cv)
 {
-  return distance <= collision_threshold_m_;
+  // TODO: Use orientation
+
+  return getDistance(ego.position, cv.position) <= collision_threshold_m_;
 }
 }  // namespace cam_collision_detection
 

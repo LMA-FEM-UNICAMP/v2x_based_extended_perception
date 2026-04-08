@@ -1,20 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
 
-  <!-- TODO COLISION DETECTOR -->
-
-  <!-- <node pkg="v2x_cam_to_tracked_object" exec="v2x_cam_to_tracked_object" name="v2x_cam_to_tracked_object" output="both">
+  <node pkg="cam_collision_detection" exec="cam_collision_detection" name="cam_collision_detection" output="screen">
+    <param from="$(find-pkg-share cam_collision_detection)/config/cam_collision_detection.param.yaml"/>
   </node>
+  
 
+
+<!-- CAM to tracjed object converter -->
+<!-- <node pkg="v2x_cam_to_tracked_object" exec="v2x_cam_to_tracked_object" name="v2x_cam_to_tracked_object" output="both">
+      </node>
+    -->
+
+<!-- EGO CAM generator -->
+<!--
   <node pkg="cam_collision_detection" exec="ego_cam.py" name="ego_cam" output="both">
     <remap from="/v2x/etsi_parser/cam/in" to="/cam/out"/>
   </node> -->
 
-  <include file="$(find-pkg-share cam_collision_detection)/launch/v2x_collision.launch.xml">
+<!-- <include file="$(find-pkg-share cam_collision_detection)/launch/v2x_collision.launch.xml">
       <arg name="map_path" value="/home/toffanetto/autoware/Maps/vilma_autoware_maps/rua_daniel_hogan"/>
       <arg name="vehicle_model" value="vilma_vehicle"/>
       <arg name="sensor_model" value="vilma_sensor_kit"/>
-  </include>
+    </include> -->
 
 </launch>
 

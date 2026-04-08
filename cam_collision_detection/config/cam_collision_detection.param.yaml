@@ -6,5 +6,5 @@ cam_collision_detector:
     prediction_horizon_s: 15
     collision_threshold_m: 2.5
     process_distance_threshold_m: 100
-    ego_station_id: 28
+    ego_station_id: 32
     debug: true
