@@ -20,19 +20,19 @@ class CAMCollisionDetection : public rclcpp::Node
 public:
   CAMCollisionDetection(const rclcpp::NodeOptions&);
 
-  void predicted_objects_callback(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr);
+  void predicted_objects_callback(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
 
-  double getTimeToCollision(PredictedPath, PredictedPath);
+  double getTimeToCollision(PredictedPath ego, PredictedPath cv);
 
-  double getTimeToCollision(PredictedPath, PredictedPath, PosePair&);
+  double getTimeToCollision(PredictedPath ego, PredictedPath cv, PosePair& collision_points);
 
-  double getDistance(geometry_msgs::msg::Point, geometry_msgs::msg::Point);
+  double getDistance(geometry_msgs::msg::Point ego, geometry_msgs::msg::Point cv);
 
-  bool willCollide(geometry_msgs::msg::Pose, geometry_msgs::msg::Pose);
+  bool willCollide(geometry_msgs::msg::Pose ego, geometry_msgs::msg::Pose cv);
 
-  bool isCVInRange(PredictedObject, PredictedObject);
+  bool isCVInRange(PredictedObject ego, PredictedObject cv);
 
-  uint16_t getStationID(unique_identifier_msgs::msg::UUID);
+  uint16_t getStationID(unique_identifier_msgs::msg::UUID object_id);
 
 private:
   rclcpp::Subscription<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr predicted_objects_sub_;

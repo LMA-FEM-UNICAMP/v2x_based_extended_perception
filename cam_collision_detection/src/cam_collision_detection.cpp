@@ -4,6 +4,11 @@
 
 namespace cam_collision_detection
 {
+/**
+ * @brief Construct a new CAMCollisionDetection::CAMCollisionDetection object
+ *
+ * @param node_options
+ */
 CAMCollisionDetection::CAMCollisionDetection(const rclcpp::NodeOptions& node_options)
   : rclcpp::Node("cam_collision_detector", node_options)
 {
@@ -34,6 +39,11 @@ CAMCollisionDetection::CAMCollisionDetection(const rclcpp::NodeOptions& node_opt
       this->create_publisher<geometry_msgs::msg::PoseArray>("/collision_detection/collision_poses", rclcpp::QoS{ 1 });
 }
 
+/**
+ * @brief 
+ * 
+ * @param msg 
+ */
 void CAMCollisionDetection::predicted_objects_callback(
     const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg)
 {
@@ -152,6 +162,14 @@ void CAMCollisionDetection::predicted_objects_callback(
   }
 }
 
+/**
+ * @brief Verify if CV and EGO are in range to predict collision
+ * 
+ * @param ego 
+ * @param cv 
+ * @return true 
+ * @return false 
+ */
 bool CAMCollisionDetection::isCVInRange(PredictedObject ego, PredictedObject cv)
 {
   //* If distance is lower the the distance that the CV will drive with the actual speed over the
@@ -169,6 +187,12 @@ bool CAMCollisionDetection::isCVInRange(PredictedObject ego, PredictedObject cv)
   return distance <= prediction_range;
 }
 
+/**
+ * @brief Recover StationID from PredictedObject UUID 
+ * 
+ * @param object_id 
+ * @return uint16_t 
+ */
 uint16_t CAMCollisionDetection::getStationID(unique_identifier_msgs::msg::UUID object_id)
 {
   /* StationID to UUID from v2x_cam_to_tracked_object.cpp:
@@ -182,6 +206,13 @@ uint16_t CAMCollisionDetection::getStationID(unique_identifier_msgs::msg::UUID o
   return (object_id.uuid[3] << 24) + (object_id.uuid[2] << 16) + (object_id.uuid[1] << 8) + object_id.uuid[1];
 }
 
+/**
+ * @brief Calculate the time to collision
+ * 
+ * @param ego 
+ * @param cv 
+ * @return double 
+ */
 double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPath cv)
 {
   for (std::size_t n = 0; n < ego.path.size(); n++)
@@ -195,6 +226,14 @@ double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPat
   return -1.0;
 }
 
+/**
+ * @brief Calculate the time to collision and where it will occur
+ * 
+ * @param ego 
+ * @param cv 
+ * @param collision_points 
+ * @return double 
+ */
 double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPath cv, PosePair& collision_points)
 {
   for (std::size_t n = 0; n < ego.path.size(); n++)
@@ -209,11 +248,26 @@ double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPat
   return -1.0;
 }
 
+/**
+ * @brief Calculate the distance in meters between the ego and a CV
+ * 
+ * @param ego 
+ * @param cv 
+ * @return double 
+ */
 double CAMCollisionDetection::getDistance(geometry_msgs::msg::Point ego, geometry_msgs::msg::Point cv)
 {
   return sqrt((ego.x - cv.x) * (ego.x - cv.x) + (ego.y - cv.y) * (ego.y - cv.y) + (ego.z - cv.z) * (ego.z - cv.z));
 }
 
+/**
+ * @brief Use a policy to verify if the predicted poses are a collision
+ * 
+ * @param ego 
+ * @param cv 
+ * @return true 
+ * @return false 
+ */
 bool CAMCollisionDetection::willCollide(geometry_msgs::msg::Pose ego, geometry_msgs::msg::Pose cv)
 {
   // TODO: Use orientation
