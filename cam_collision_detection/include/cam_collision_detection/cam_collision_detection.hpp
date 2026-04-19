@@ -13,16 +13,20 @@ namespace cam_collision_detection
 {
 class CAMCollisionDetection : public rclcpp::Node
 {
+  /* Aliases */
   using PredictedPath = autoware_perception_msgs::msg::PredictedPath;
   using PredictedObject = autoware_perception_msgs::msg::PredictedObject;
   using PosePair = std::pair<geometry_msgs::msg::Pose, geometry_msgs::msg::Pose>;
 
 public:
+  /* Constructor */
   CAMCollisionDetection(const rclcpp::NodeOptions&);
 
+  /* ROS2 Callbacks*/
   void predicted_objects_callback(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
 
-  double getTimeToCollision(PredictedPath ego, PredictedPath cv);
+  /* Methods */
+  ////double getTimeToCollision(PredictedPath ego, PredictedPath cv);
 
   double getTimeToCollision(PredictedPath ego, PredictedPath cv, PosePair& collision_points);
 
@@ -35,10 +39,12 @@ public:
   uint16_t getStationID(unique_identifier_msgs::msg::UUID object_id);
 
 private:
+  /* ROS2 entities */
   rclcpp::Subscription<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr predicted_objects_sub_;
 
   rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr collision_points_pub_;
 
+  /* Collision detection parameters */
   u_int16_t ego_station_id_;
   uint8_t info_threshold_s_;
   uint8_t warn_threshold_s_;
@@ -47,6 +53,7 @@ private:
   double collision_threshold_m_;
   double process_distance_threshold_m_;
 
+  /* Auxiliary configuration*/
   bool debug_;
 };
 }  // namespace cam_collision_detection
