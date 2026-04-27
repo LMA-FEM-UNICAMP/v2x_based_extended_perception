@@ -26,14 +26,9 @@ public:
   void predicted_objects_callback(const autoware_perception_msgs::msg::PredictedObjects::SharedPtr msg);
 
   /* Methods */
-  ////double getTimeToCollision(PredictedPath ego, PredictedPath cv);
-
-  double getTimeToCollision(PredictedPath ego, PredictedPath cv, PosePair& collision_points);
 
   double getDistance(geometry_msgs::msg::Point ego, geometry_msgs::msg::Point cv);
-
-  bool willCollide(geometry_msgs::msg::Pose ego, geometry_msgs::msg::Pose cv);
-
+  
   bool isCVInRange(PredictedObject ego, PredictedObject cv);
 
   uint16_t getStationID(unique_identifier_msgs::msg::UUID object_id);

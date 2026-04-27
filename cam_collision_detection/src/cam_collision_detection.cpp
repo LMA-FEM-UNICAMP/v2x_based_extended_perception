@@ -1,7 +1,5 @@
 #include "cam_collision_detection/cam_collision_detection.hpp"
 
-#include <autoware_perception_msgs/msg/predicted_path.hpp>
-
 namespace cam_collision_detection
 {
 /**
@@ -123,52 +121,18 @@ void CAMCollisionDetection::predicted_objects_callback(
       ///  with all ego predicted paths...
       for (auto& ego_path : ego.kinematics.predicted_paths)
       {
-        PosePair path_collision_points;  // Current collision points
-
-        // TODO: Create a score for each pair of trajectories based
-        // TODO:  in the confidence for each predicted trajectory.
-
-        /// Get time to collision for the current trajectories
-        double path_time_to_collision =
-            getTimeToCollision(ego_path, cv_path, path_collision_points);  // Current time to collision
-
-        /// Check if the current trajectories cause the earliest collision
-        if (path_time_to_collision < time_to_collision)
-        {
-          time_to_collision = path_time_to_collision;
-          collision_points = path_collision_points;
-        }
+        // TODO: double calculate_trajectories_risk(PredictedPath ego, PredictedPath cv, PosePair& collision_points);
       }
     }
 
     //* Given the time to collision between the predicted trajectories, classify the risk level
 
-    if (INFINITY == time_to_collision)  // No collision detected
+    if (!DecisionMaking::risk_assessment(time_to_collision))  // No collision detected
     {
       RCLCPP_INFO(this->get_logger(), "No collision detected.");
     }
     else  // Possible collision detected
     {
-      if (time_to_collision < fatal_threshold_s_)  // Level FATAL
-      {
-        RCLCPP_FATAL(this->get_logger(), "COLLISION (FATAL ALERT)!!!");
-      }
-      else if (time_to_collision < warn_threshold_s_)  // Level WARN
-      {
-        RCLCPP_WARN(this->get_logger(), "COLLISION (WARN ALERT)!!!");
-      }
-      else if (time_to_collision < info_threshold_s_)  // Level INFO
-      {
-        RCLCPP_INFO(this->get_logger(), "COLLISION (INFO ALERT)!!!");
-      }
-      else  // Lowest level
-      {
-        RCLCPP_INFO(this->get_logger(), "Vehicles in collision route!!!");
-      }
-
-      RCLCPP_INFO(this->get_logger(), "Time to collision: %.4f s.", time_to_collision);
-
-      // Add collision points to visualization
       collision_poses_array.poses.emplace_back(collision_points.first);
       collision_poses_array.poses.emplace_back(collision_points.second);
     }
@@ -231,55 +195,6 @@ uint16_t CAMCollisionDetection::getStationID(unique_identifier_msgs::msg::UUID o
   return (object_id.uuid[3] << 24) + (object_id.uuid[2] << 16) + (object_id.uuid[1] << 8) + object_id.uuid[1];
 }
 
-//// /**
-////   @brief Calculate the time to collision
-////
-////   @param ego
-////   @param cv
-////   @return double
-////  /
-//// double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPath cv)
-//// {
-////   /// For each pose in the predicted trajectory array of the EGO and CV
-////   for (std::size_t n = 0; n < ego.path.size(); n++)
-////   {
-//     /// Check if the poses at stamp n causes collision
-////     if (willCollide(ego.path.at(n), cv.path.at(n)))
-////     {
-//       /// If yes, compute the time when that occurs based in the stamp n and time_step of prediction
-////       return (ego.time_step.nanosec * 1e-9) * (n + 1);
-////     }
-////   }
-
-////   return INFINITY;
-//// }
-
-/**
- * @brief Calculate the time to collision and where it will occur
- *
- * @param ego
- * @param cv
- * @param collision_points
- * @return double
- */
-double CAMCollisionDetection::getTimeToCollision(PredictedPath ego, PredictedPath cv, PosePair& collision_points)
-{
-  /// For each pose in the predicted trajectory array of the EGO and CV
-  for (std::size_t n = 0; n < ego.path.size(); n++)
-  {
-    /// Check if the poses at stamp n causes collision
-    if (willCollide(ego.path.at(n), cv.path.at(n)))
-    {
-      collision_points = std::make_pair(ego.path.at(n), cv.path.at(n));  // Collect collision poses
-      /// If yes, compute the time when that occurs based in the stamp n and time_step of prediction
-      return (ego.time_step.nanosec * 1e-9) * (n + 1);
-    }
-  }
-
-  /// Collision not detected
-  return INFINITY;
-}
-
 /**
  * @brief Calculate the distance in meters between the ego and a CV
  *
@@ -292,21 +207,6 @@ double CAMCollisionDetection::getDistance(geometry_msgs::msg::Point ego, geometr
   return sqrt((ego.x - cv.x) * (ego.x - cv.x) + (ego.y - cv.y) * (ego.y - cv.y) + (ego.z - cv.z) * (ego.z - cv.z));
 }
 
-/**
- * @brief Use a policy to verify if the predicted poses are a collision
- *
- * @param ego
- * @param cv
- * @return true
- * @return false
- */
-bool CAMCollisionDetection::willCollide(geometry_msgs::msg::Pose ego, geometry_msgs::msg::Pose cv)
-{
-  // TODO: Use orientation
-
-  /// Return if collision will happen based in the distance between the points is below a threshold
-  return getDistance(ego.position, cv.position) <= collision_threshold_m_;
-}
 }  // namespace cam_collision_detection
 
 #include <rclcpp_components/register_node_macro.hpp>

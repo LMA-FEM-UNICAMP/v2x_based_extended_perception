@@ -44,13 +44,16 @@ V2XCAM2TrackedObject::V2XCAM2TrackedObject(const rclcpp::NodeOptions & node_opti
     "/perception/object_recognition/tracking/objects", rclcpp::QoS{1});
 
   cam_timer_ = this->create_wall_timer(
-    std::chrono::microseconds(100), std::bind(&V2XCAM2TrackedObject::cam_timer_callback, this));
+    std::chrono::milliseconds(100), std::bind(&V2XCAM2TrackedObject::cam_timer_callback, this));
     
 }
 
 void V2XCAM2TrackedObject::cam_timer_callback()
 {
   if (cam_tracked_objects_.objects.size() > 0) {
+
+    // TODO: Check if the cam is old (t > 1.1 s)
+
     cam_tracked_objects_.header.stamp = this->now();
     cam_tracked_objects_.header.frame_id = "map";  // World frame ID
 

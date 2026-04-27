@@ -13,6 +13,8 @@ set(CAM_COLLISION_DETECTION_HEADERS
 
 ament_auto_add_library(cam_collision_detection_node SHARED
   src/cam_collision_detection.cpp
+  src/decision_making.cpp
+  src/risk_estimation.cpp
   ${CAM_COLLISION_DETECTION_HEADERS}
 )
 
