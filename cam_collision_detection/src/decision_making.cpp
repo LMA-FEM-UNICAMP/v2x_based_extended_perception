@@ -1,3 +1,5 @@
+
+
 #include "cam_collision_detection/decision_making.hpp"
 
 #include <cmath>
@@ -23,28 +25,28 @@ bool DecisionMaking::risk_assessment(double risk)
 {
   if (INFINITY == risk)  // No collision detected
   {
-    RCLCPP_INFO(this->get_logger(), "No collision detected.");
+    // RCLCPP_INFO(this->get_logger(), "No collision detected.");
   }
   else  // Possible collision detected
   {
     if (risk < fatal_threshold)  // Level FATAL
     {
-      RCLCPP_FATAL(this->get_logger(), "COLLISION (FATAL ALERT)!!!");
+      // RCLCPP_FATAL(this->get_logger(), "COLLISION (FATAL ALERT)!!!");
     }
     else if (risk < warn_threshold)  // Level WARN
     {
-      RCLCPP_WARN(this->get_logger(), "COLLISION (WARN ALERT)!!!");
+      // RCLCPP_WARN(this->get_logger(), "COLLISION (WARN ALERT)!!!");
     }
     else if (risk < info_threshold)  // Level INFO
     {
-      RCLCPP_INFO(this->get_logger(), "COLLISION (INFO ALERT)!!!");
+      // RCLCPP_INFO(this->get_logger(), "COLLISION (INFO ALERT)!!!");
     }
     else  // Lowest level
     {
-      RCLCPP_INFO(this->get_logger(), "Vehicles in collision route!!!");
+      // RCLCPP_INFO(this->get_logger(), "Vehicles in collision route!!!");
     }
 
-    RCLCPP_INFO(this->get_logger(), "Time to collision: %.4f s.", risk);
+    // RCLCPP_INFO(this->get_logger(), "Time to collision: %.4f s.", risk);
 
     return true;
   }

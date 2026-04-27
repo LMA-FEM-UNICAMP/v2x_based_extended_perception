@@ -1,3 +1,5 @@
+#include "rclcpp/rclcpp.hpp"
+
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_perception_msgs/msg/predicted_path.hpp>
 

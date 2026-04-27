@@ -28,6 +28,8 @@ CAMCollisionDetection::CAMCollisionDetection(const rclcpp::NodeOptions& node_opt
   this->ego_station_id_ = this->get_parameter("ego_station_id").get_value<uint16_t>();
   this->debug_ = this->get_parameter("debug").get_value<bool>();
 
+  risk_politics_.collision_threshold_m = this->collision_threshold_m_;
+
   /* ROS2 Topics */
 
   using std::placeholders::_1;
@@ -97,14 +99,11 @@ void CAMCollisionDetection::predicted_objects_callback(
     return;
   }
 
+  RiskEstimation predicted_risk(risk_politics_);
+
   //* For each CV received, compare all its predicted trajectories with all EGO predicted trajectories
   for (auto& cv : cvs.objects)
   {
-    // Auxiliary structure to display collision points in RViz.
-    geometry_msgs::msg::PoseArray collision_poses_array;
-    collision_poses_array.header.stamp = this->now();
-    collision_poses_array.header.set__frame_id("map");
-
     /// If CV is so far away, is not needed to check collision
     if (!isCVInRange(ego, cv))
     {
@@ -112,38 +111,34 @@ void CAMCollisionDetection::predicted_objects_callback(
       continue;
     }
 
-    double time_to_collision = INFINITY;  // Earliest collision time
-    PosePair collision_points;            // Earliest collision points
-
     /// Check all CV predicted paths...
     for (auto& cv_path : cv.kinematics.predicted_paths)
     {
       ///  with all ego predicted paths...
       for (auto& ego_path : ego.kinematics.predicted_paths)
       {
-        // TODO: double calculate_trajectories_risk(PredictedPath ego, PredictedPath cv, PosePair& collision_points);
+        double time_to_collision = predicted_risk.calculate_trajectories_risk(ego_path, cv_path);
+        (void)time_to_collision;
       }
     }
-
-    //* Given the time to collision between the predicted trajectories, classify the risk level
-
-    if (!DecisionMaking::risk_assessment(time_to_collision))  // No collision detected
-    {
-      RCLCPP_INFO(this->get_logger(), "No collision detected.");
-    }
-    else  // Possible collision detected
-    {
-      collision_poses_array.poses.emplace_back(collision_points.first);
-      collision_poses_array.poses.emplace_back(collision_points.second);
-    }
-
-    collision_points_pub_->publish(collision_poses_array);  // Publish collision points for RViz
-
-    rclcpp::Duration elapsed_time = this->now() - init_time;  // Compute elapsed_time for collision processing
-
-    RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Elapsed time for collision detection: %lf ms",
-                          elapsed_time.nanoseconds() * 1e6);
   }
+
+  //* Given the time to collision between the predicted trajectories, classify the risk level
+
+  DecisionMaking decision_making;
+
+  if (!decision_making.risk_assessment(predicted_risk.getRiskScore()))  // No collision detected
+  {
+    RCLCPP_INFO(this->get_logger(), "No collision detected.");
+  }
+
+  collision_points_pub_->publish(predicted_risk.getCollisionPosesArray(this->now()));  // Publish collision points for
+                                                                                       // RViz
+
+  rclcpp::Duration elapsed_time = this->now() - init_time;  // Compute elapsed_time for collision processing
+
+  RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 500, "Elapsed time for collision detection: %lf ms",
+                        elapsed_time.nanoseconds() * 1e6);
 }
 
 /**

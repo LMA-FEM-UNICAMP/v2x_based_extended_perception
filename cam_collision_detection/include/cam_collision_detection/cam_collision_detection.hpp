@@ -9,6 +9,9 @@
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <unique_identifier_msgs/msg/uuid.hpp>
 
+#include "cam_collision_detection/decision_making.hpp"
+#include "cam_collision_detection/risk_estimation.hpp"
+
 namespace cam_collision_detection
 {
 class CAMCollisionDetection : public rclcpp::Node
@@ -47,6 +50,8 @@ private:
   uint8_t prediction_horizon_s_;
   double collision_threshold_m_;
   double process_distance_threshold_m_;
+
+  risk_politics_t risk_politics_;
 
   /* Auxiliary configuration*/
   bool debug_;
