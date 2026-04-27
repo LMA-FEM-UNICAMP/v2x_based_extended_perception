@@ -17,52 +17,66 @@
 #include <autoware_perception_msgs/msg/shape.hpp>
 #include <autoware_perception_msgs/msg/tracked_object.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#include <unique_identifier_msgs/msg/uuid.hpp>
 
 #define RAD2DEG(x) ((x) * 180.0 / M_PI)
 #define DEG2RAD(x) ((x) / 180.0 * M_PI)
 
 namespace autoware::v2x_cam_to_tracked_object
 {
-V2XCAM2TrackedObject::V2XCAM2TrackedObject(const rclcpp::NodeOptions & node_options)
-: rclcpp::Node("v2x_cam_to_tracked_object", node_options)
+V2XCAM2TrackedObject::V2XCAM2TrackedObject(const rclcpp::NodeOptions& node_options)
+  : rclcpp::Node("v2x_cam_to_tracked_object", node_options)
 {
   RCLCPP_DEBUG(this->get_logger(), "Starting v2x_cam_to_tracked_object class...");
 
   // Subscribe to map_projector_info topic
   const auto adaptor = autoware::component_interface_utils::NodeAdaptor(this);
-  adaptor.init_sub(
-    map_projector_info_sub_, [this](const MapProjectorInfo::Message::ConstSharedPtr msg) {
-      callback_map_projector_info(msg);
-    });
+  adaptor.init_sub(map_projector_info_sub_,
+                   [this](const MapProjectorInfo::Message::ConstSharedPtr msg) { callback_map_projector_info(msg); });
 
   cam_sub_ = this->create_subscription<etsi_its_cam_msgs::msg::CAM>(
-    "cam/out", rclcpp::QoS{1},
-    std::bind(&V2XCAM2TrackedObject::cam_callback, this, std::placeholders::_1));
+      "cam/out", rclcpp::QoS{ 1 }, std::bind(&V2XCAM2TrackedObject::cam_callback, this, std::placeholders::_1));
 
   tracked_objects_pub_ = this->create_publisher<autoware_perception_msgs::msg::TrackedObjects>(
-    "/perception/object_recognition/tracking/objects", rclcpp::QoS{1});
+      "/perception/object_recognition/tracking/objects", rclcpp::QoS{ 1 });
 
-  cam_timer_ = this->create_wall_timer(
-    std::chrono::milliseconds(100), std::bind(&V2XCAM2TrackedObject::cam_timer_callback, this));
-    
+  cam_timer_ = this->create_wall_timer(std::chrono::milliseconds(100),
+                                       std::bind(&V2XCAM2TrackedObject::cam_timer_callback, this));
+
+  this->declare_parameter("cam_message_validity_s", 1.1);
+  cam_message_validity_s_ = this->get_parameter("cam_message_validity_s").as_double();
+
+  clock_ = this->get_clock();
+
+  cam_object_life_dict_ = {};
 }
 
 void V2XCAM2TrackedObject::cam_timer_callback()
 {
-  if (cam_tracked_objects_.objects.size() > 0) {
+  if (cam_tracked_objects_.objects.size() > 0)
+  {
+    for (auto it = cam_tracked_objects_.objects.begin(); it != cam_tracked_objects_.objects.end();)
+    {
+      uint32_t cam_station_id = getStationID(it->object_id);
 
-    // TODO: Check if the cam is old (t > 1.1 s)
+      if ((clock_->now() - cam_object_life_dict_[cam_station_id]).seconds() > cam_message_validity_s_)
+      {
+        cam_object_life_dict_.erase(cam_station_id);
+        it = cam_tracked_objects_.objects.erase(it);
+      }
+      else
+      {
+        ++it;
+      }
+    }
 
-    cam_tracked_objects_.header.stamp = this->now();
+    cam_tracked_objects_.header.stamp = clock_->now();
     cam_tracked_objects_.header.frame_id = "map";  // World frame ID
 
     tracked_objects_pub_->publish(cam_tracked_objects_);
   }
 }
 
-void V2XCAM2TrackedObject::callback_map_projector_info(
-  const MapProjectorInfo::Message::ConstSharedPtr msg)
+void V2XCAM2TrackedObject::callback_map_projector_info(const MapProjectorInfo::Message::ConstSharedPtr msg)
 {
   projector_info_ = *msg;
   received_map_projector_info_ = true;
@@ -73,11 +87,11 @@ void V2XCAM2TrackedObject::cam_callback(const etsi_its_cam_msgs::msg::CAM::Share
   RCLCPP_DEBUG(this->get_logger(), "CAM RECEIVED!");
 
   // Return immediately if map_projector_info has not been received yet.
-  if (!received_map_projector_info_) {
-    RCLCPP_WARN_THROTTLE(
-      this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(),
-      "map_projector_info has not been received yet. Check if the map_projection_loader is "
-      "successfully launched.");
+  if (!received_map_projector_info_)
+  {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *clock_, std::chrono::milliseconds(1000).count(),
+                         "map_projector_info has not been received yet. Check if the map_projection_loader is "
+                         "successfully launched.");
     return;
   }
 
@@ -90,17 +104,14 @@ void V2XCAM2TrackedObject::cam_callback(const etsi_its_cam_msgs::msg::CAM::Share
   cam_gnss.longitude = etsi_its_cam_msgs::access::getLongitude(*msg);
   cam_gnss.altitude = etsi_its_cam_msgs::access::getAltitude(*msg);
 
-  geometry_msgs::msg::Point cam_position =
-    autoware::geography_utils::project_forward(cam_gnss, projector_info_);
+  geometry_msgs::msg::Point cam_position = autoware::geography_utils::project_forward(cam_gnss, projector_info_);
 
-  cam_position.z = autoware::geography_utils::convert_height(
-    cam_position.z, cam_gnss.latitude, cam_gnss.longitude, MapProjectorInfo::Message::WGS84,
-    projector_info_.vertical_datum);
+  cam_position.z =
+      autoware::geography_utils::convert_height(cam_position.z, cam_gnss.latitude, cam_gnss.longitude,
+                                                MapProjectorInfo::Message::WGS84, projector_info_.vertical_datum);
 
   tf2::Quaternion cam_orientation;
-  double yaw =
-    M_PI_2 -
-    DEG2RAD(etsi_its_cam_msgs::access::getHeading(*msg));  // Converting GNSS heading to ENU
+  double yaw = M_PI_2 - DEG2RAD(etsi_its_cam_msgs::access::getHeading(*msg));  // Converting GNSS heading to ENU
 
   yaw = atan2(sin(yaw), cos(yaw));
 
@@ -125,48 +136,42 @@ void V2XCAM2TrackedObject::cam_callback(const etsi_its_cam_msgs::msg::CAM::Share
 
   /// Twist
 
-  cam_tracked_object.kinematics.twist_with_covariance.twist.linear.x =
-    etsi_its_cam_msgs::access::getSpeed(*msg);
+  cam_tracked_object.kinematics.twist_with_covariance.twist.linear.x = etsi_its_cam_msgs::access::getSpeed(*msg);
 
   cam_tracked_object.kinematics.twist_with_covariance.twist.angular.z =
-    DEG2RAD(etsi_its_cam_msgs::access::getYawRate(*msg));
+      DEG2RAD(etsi_its_cam_msgs::access::getYawRate(*msg));
 
   /// Accel
-  try {
+  try
+  {
     cam_tracked_object.kinematics.acceleration_with_covariance.accel.linear.x =
-      etsi_its_cam_msgs::access::getLongitudinalAcceleration(*msg);
-  } catch (const std::exception & e) {
+        etsi_its_cam_msgs::access::getLongitudinalAcceleration(*msg);
+  }
+  catch (const std::exception& e)
+  {
     std::cerr << e.what() << '\n';
   }
 
-  try {
+  try
+  {
     cam_tracked_object.kinematics.acceleration_with_covariance.accel.linear.y =
-      etsi_its_cam_msgs::access::getLateralAcceleration(*msg);  // ? Left is positive
-  } catch (const std::exception & e) {
+        etsi_its_cam_msgs::access::getLateralAcceleration(*msg);  // ? Left is positive
+  }
+  catch (const std::exception& e)
+  {
     std::cerr << e.what() << '\n';
   }
 
   /// Set object type
   autoware_perception_msgs::msg::ObjectClassification cam_classification;
 
-  cam_classification.label =
-    etsi_to_autoware_object_class(etsi_its_cam_msgs::access::getStationType(*msg));
+  cam_classification.label = etsi_to_autoware_object_class(etsi_its_cam_msgs::access::getStationType(*msg));
   cam_classification.probability = 1.0f;
   cam_tracked_object.classification.emplace_back(cam_classification);
 
   /// Set object ID
-  unique_identifier_msgs::msg::UUID cam_uuid;
-
   uint32_t cam_station_id = etsi_its_cam_msgs::access::getStationID(*msg);
-
-  std::memset(cam_uuid.uuid.data(), 0, cam_uuid.uuid.size());
-
-  cam_uuid.uuid[3] = (cam_station_id >> 24) & 0xFF;
-  cam_uuid.uuid[2] = (cam_station_id >> 16) & 0xFF;
-  cam_uuid.uuid[1] = (cam_station_id >> 8) & 0xFF;
-  cam_uuid.uuid[0] = (cam_station_id) & 0xFF;
-
-  cam_tracked_object.object_id = cam_uuid;
+  getObjectID(cam_station_id, cam_tracked_object.object_id);
 
   /// Shape
 
@@ -183,26 +188,31 @@ void V2XCAM2TrackedObject::cam_callback(const etsi_its_cam_msgs::msg::CAM::Share
 
   bool new_object = true;
 
-  for (auto & object : cam_tracked_objects_.objects) {
-    if (cam_tracked_object.object_id == object.object_id) {
+  for (auto& object : cam_tracked_objects_.objects)
+  {
+    if (cam_tracked_object.object_id == object.object_id)
+    {
       object = cam_tracked_object;
       new_object = false;
+      cam_object_life_dict_[cam_station_id] = clock_->now();
       break;
     }
   }
 
-  if (new_object) {
+  if (new_object)
+  {
+    cam_object_life_dict_.emplace(cam_station_id, clock_->now());
     cam_tracked_objects_.objects.emplace_back(cam_tracked_object);
   }
 }
 
-double V2XCAM2TrackedObject::getCAMObjectHeight(
-  const etsi_its_cam_msgs::msg::CAM::SharedPtr cam)
+double V2XCAM2TrackedObject::getCAMObjectHeight(const etsi_its_cam_msgs::msg::CAM::SharedPtr cam)
 {
   uint8_t station_type = etsi_its_cam_msgs::access::getStationType(*cam);
 
   /// Return an average value for each class
-  switch (station_type) {
+  switch (station_type)
+  {
     case etsi_its_cam_msgs::msg::StationType::UNKNOWN:
       return 2.0;
       break;
@@ -299,7 +309,8 @@ uint8_t V2XCAM2TrackedObject::etsi_to_autoware_object_class(const uint8_t etsi_s
   overpass)
   */
 
-  switch (etsi_station_type) {
+  switch (etsi_station_type)
+  {
     case etsi_its_cam_msgs::msg::StationType::UNKNOWN:
       return autoware_perception_msgs::msg::ObjectClassification::UNKNOWN;
       break;
@@ -360,6 +371,30 @@ uint8_t V2XCAM2TrackedObject::etsi_to_autoware_object_class(const uint8_t etsi_s
   }
   return autoware_perception_msgs::msg::ObjectClassification::UNKNOWN;
 }
+
+uint32_t V2XCAM2TrackedObject::getStationID(unique_identifier_msgs::msg::UUID object_id)
+{
+  /* StationID to UUID from v2x_cam_to_tracked_object.cpp:
+    cam_uuid.uuid[3] = (cam_station_id >> 24) & 0xFF;
+    cam_uuid.uuid[2] = (cam_station_id >> 16) & 0xFF;
+    cam_uuid.uuid[1] = (cam_station_id >> 8) & 0xFF;
+    cam_uuid.uuid[0] = (cam_station_id) & 0xFF;
+  */
+
+  /// UUID to StationID:
+  return (object_id.uuid[3] << 24) + (object_id.uuid[2] << 16) + (object_id.uuid[1] << 8) + object_id.uuid[0];
+}
+
+void V2XCAM2TrackedObject::getObjectID(uint32_t station_id, unique_identifier_msgs::msg::UUID& cam_uuid)
+{
+  std::memset(cam_uuid.uuid.data(), 0, cam_uuid.uuid.size());
+
+  cam_uuid.uuid[3] = (station_id >> 24) & 0xFF;
+  cam_uuid.uuid[2] = (station_id >> 16) & 0xFF;
+  cam_uuid.uuid[1] = (station_id >> 8) & 0xFF;
+  cam_uuid.uuid[0] = (station_id) & 0xFF;
+}
+
 }  // namespace autoware::v2x_cam_to_tracked_object
 
 #include <rclcpp_components/register_node_macro.hpp>

@@ -177,7 +177,7 @@ bool CAMCollisionDetection::isCVInRange(PredictedObject ego, PredictedObject cv)
  * @param object_id
  * @return uint16_t
  */
-uint16_t CAMCollisionDetection::getStationID(unique_identifier_msgs::msg::UUID object_id)
+uint32_t CAMCollisionDetection::getStationID(unique_identifier_msgs::msg::UUID object_id)
 {
   /* StationID to UUID from v2x_cam_to_tracked_object.cpp:
     cam_uuid.uuid[3] = (cam_station_id >> 24) & 0xFF;

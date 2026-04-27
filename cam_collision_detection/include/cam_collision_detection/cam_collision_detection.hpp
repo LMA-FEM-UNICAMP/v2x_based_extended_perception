@@ -34,7 +34,7 @@ public:
   
   bool isCVInRange(PredictedObject ego, PredictedObject cv);
 
-  uint16_t getStationID(unique_identifier_msgs::msg::UUID object_id);
+  uint32_t getStationID(unique_identifier_msgs::msg::UUID object_id);
 
 private:
   /* ROS2 entities */
