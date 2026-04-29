@@ -48,7 +48,7 @@ class ego_cam(Node):
 
         super().__init__("cam_publisher")
         
-        self.ego_cam = self.create_publisher(CAM, "/v2x/etsi_parser/cam/in", 1)
+        self.ego_cam = self.create_publisher(CAM, "/cam/out", 1)
         
         self.velocity_report = self.create_subscription(
             VelocityReport, '/vehicle/status/velocity_status', self.speedCallback, 1)
