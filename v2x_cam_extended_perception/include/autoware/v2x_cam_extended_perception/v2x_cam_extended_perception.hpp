@@ -7,6 +7,7 @@
 #include <autoware/component_interface_utils/rclcpp.hpp>
 
 #include "autoware_perception_msgs/msg/detected_objects.hpp"
+#include "autoware_perception_msgs/msg/tracked_objects.hpp"
 #include "etsi_its_cam_msgs/msg/cam.hpp"
 
 namespace autoware::v2x_cam_extended_perception
@@ -40,6 +41,8 @@ private:
     map_projector_info_sub_;
   rclcpp::Publisher<autoware_perception_msgs::msg::DetectedObjects>::SharedPtr
     detected_objects_pub_;
+  rclcpp::Publisher<autoware_perception_msgs::msg::TrackedObjects>::SharedPtr
+    tracked_objects_pub_;
   rclcpp::TimerBase::SharedPtr cam_timer_;
 };
 }  // namespace autoware::v2x_cam_extended_perception

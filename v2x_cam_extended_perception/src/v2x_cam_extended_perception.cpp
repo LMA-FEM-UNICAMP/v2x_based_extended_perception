@@ -43,6 +43,9 @@ V2XCAMExtendedPerception::V2XCAMExtendedPerception(const rclcpp::NodeOptions & n
   detected_objects_pub_ = this->create_publisher<autoware_perception_msgs::msg::DetectedObjects>(
     "/perception/object_recognition/detection/objects", rclcpp::QoS{1});
 
+  tracked_objects_pub_ = this->create_publisher<autoware_perception_msgs::msg::TrackedObjects>(
+    "/perception/object_recognition/detection/detection_by_tracker/objects", rclcpp::QoS{1});
+
   cam_timer_ = this->create_wall_timer(
     std::chrono::microseconds(100), std::bind(&V2XCAMExtendedPerception::cam_timer_callback, this));
     
@@ -50,12 +53,6 @@ V2XCAMExtendedPerception::V2XCAMExtendedPerception(const rclcpp::NodeOptions & n
 
 void V2XCAMExtendedPerception::cam_timer_callback()
 {
-  if (cam_tracked_objects_.objects.size() > 0) {
-    cam_tracked_objects_.header.stamp = this->now();
-    cam_tracked_objects_.header.frame_id = "map";  // World frame ID
-
-    tracked_objects_pub_->publish(cam_tracked_objects_);
-  }
 }
 
 void V2XCAMExtendedPerception::callback_map_projector_info(
@@ -110,9 +107,9 @@ void V2XCAMExtendedPerception::cam_callback(const etsi_its_cam_msgs::msg::CAM::S
   cam_pose_with_covariance.pose.orientation = tf2::toMsg(cam_orientation);
 
   // Default values for covariance
-  cam_pose_with_covariance.covariance[7 * 0] = 10.0;
-  cam_pose_with_covariance.covariance[7 * 1] = 10.0;
-  cam_pose_with_covariance.covariance[7 * 2] = 10.0;
+  cam_pose_with_covariance.covariance[7 * 0] = 1.0;
+  cam_pose_with_covariance.covariance[7 * 1] = 1.0;
+  cam_pose_with_covariance.covariance[7 * 2] = 1.0;
   cam_pose_with_covariance.covariance[7 * 3] = 0.1;
   cam_pose_with_covariance.covariance[7 * 4] = 0.1;
   cam_pose_with_covariance.covariance[7 * 5] = 1.0;
@@ -193,6 +190,14 @@ void V2XCAMExtendedPerception::cam_callback(const etsi_its_cam_msgs::msg::CAM::S
     cam_tracked_objects_.objects.emplace_back(cam_tracked_object);
   }
 
+
+  if (cam_tracked_objects_.objects.size() > 0) {
+    cam_tracked_objects_.header.stamp = this->now();
+    cam_tracked_objects_.header.frame_id = "map";  // World frame ID
+
+    // tracked_objects_pub_->publish(cam_tracked_objects_);
+  }
+
   /// Publish as detected object
 
   cam_detected_object.classification = cam_tracked_object.classification;
@@ -210,7 +215,7 @@ void V2XCAMExtendedPerception::cam_callback(const etsi_its_cam_msgs::msg::CAM::S
   cam_detected_objects.header.frame_id = "map";  // World frame ID
   cam_detected_objects.objects.emplace_back(cam_detected_object);
 
-  // detected_objects_pub_->publish(cam_detected_objects);
+  detected_objects_pub_->publish(cam_detected_objects);
 }
 
 double V2XCAMExtendedPerception::getCAMObjectHeight(
