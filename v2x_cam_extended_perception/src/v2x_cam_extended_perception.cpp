@@ -40,9 +40,6 @@ V2XCAMExtendedPerception::V2XCAMExtendedPerception(const rclcpp::NodeOptions& no
   detected_objects_pub_ = this->create_publisher<autoware_perception_msgs::msg::DetectedObjects>(
       "/perception/object_recognition/detection/objects", rclcpp::QoS{ 1 });
 
-  tracked_objects_pub_ = this->create_publisher<autoware_perception_msgs::msg::TrackedObjects>(
-      "/perception/object_recognition/detection/detection_by_tracker/objects", rclcpp::QoS{ 1 });
-
   received_map_projector_info_ = false;
 }
 
@@ -94,9 +91,27 @@ void V2XCAMExtendedPerception::cam_callback(const etsi_its_cam_msgs::msg::CAM::S
 
   cam_detected_object.kinematics.has_position_covariance = true;
 
+  //* BETA
+
+  double semi_major_confidence = msg->cam.cam_parameters.basic_container.reference_position.position_confidence_ellipse
+                                     .semi_major_confidence.value /
+                                 100.0;
+
+  double semi_minor_confidence = msg->cam.cam_parameters.basic_container.reference_position.position_confidence_ellipse
+                                     .semi_minor_confidence.value /
+                                 100.0;
+
+  double semi_major_orientation = msg->cam.cam_parameters.basic_container.reference_position.position_confidence_ellipse
+                                     .semi_major_orientation.value /
+                                 10.0;
+
+  RCLCPP_INFO(this->get_logger(), "semi_major_confidence = %lf", semi_major_confidence);
+  RCLCPP_INFO(this->get_logger(), "semi_minor_confidence = %lf", semi_minor_confidence);
+  RCLCPP_INFO(this->get_logger(), "semi_major_orientation = %lf", semi_major_orientation);
+
   // Default values for covariance
-  cam_pose_with_covariance.covariance[7 * 0] = 1.0;
-  cam_pose_with_covariance.covariance[7 * 1] = 1.0;
+  cam_pose_with_covariance.covariance[7 * 0] = semi_major_confidence;
+  cam_pose_with_covariance.covariance[7 * 1] = semi_minor_confidence;
   cam_pose_with_covariance.covariance[7 * 2] = 1.0;
   cam_pose_with_covariance.covariance[7 * 3] = 0.1;
   cam_pose_with_covariance.covariance[7 * 4] = 0.1;

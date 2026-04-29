@@ -34,7 +34,6 @@ private:
   rclcpp::Subscription<etsi_its_cam_msgs::msg::CAM>::SharedPtr cam_sub_;
   autoware::component_interface_utils::Subscription<MapProjectorInfo>::SharedPtr map_projector_info_sub_;
   rclcpp::Publisher<autoware_perception_msgs::msg::DetectedObjects>::SharedPtr detected_objects_pub_;
-  rclcpp::Publisher<autoware_perception_msgs::msg::TrackedObjects>::SharedPtr tracked_objects_pub_;
 };
 }  // namespace autoware::v2x_cam_extended_perception
 #endif  // V2X_CAM_EXTENDED_PERCEPTION_HPP_
