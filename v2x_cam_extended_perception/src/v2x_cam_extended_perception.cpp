@@ -2,8 +2,14 @@
 
 #include "etsi_its_msgs_utils/cam_access.hpp"  // access functions
 
-#include <autoware/geography_utils/height.hpp>
-#include <autoware/geography_utils/projection.hpp>
+// New Autoware
+// #include <autoware/geography_utils/height.hpp>
+// #include <autoware/geography_utils/projection.hpp>
+
+// Old Autoware
+#include <geography_utils/height.hpp>
+#include <geography_utils/projection.hpp>
+
 #include <tf2/LinearMath/Quaternion.hpp>
 
 #include "etsi_its_cam_msgs/msg/station_type.hpp"
@@ -30,7 +36,7 @@ V2XCAMExtendedPerception::V2XCAMExtendedPerception(const rclcpp::NodeOptions& no
   RCLCPP_INFO(this->get_logger(), "Starting v2x_cam_extended_perception class...");
 
   // Subscribe to map_projector_info topic
-  const auto adaptor = autoware::component_interface_utils::NodeAdaptor(this);
+  const auto adaptor = component_interface_utils::NodeAdaptor(this);
   adaptor.init_sub(map_projector_info_sub_,
                    [this](const MapProjectorInfo::Message::ConstSharedPtr msg) { callback_map_projector_info(msg); });
 
@@ -71,11 +77,10 @@ void V2XCAMExtendedPerception::cam_callback(const etsi_its_cam_msgs::msg::CAM::S
   cam_gnss.longitude = etsi_its_cam_msgs::access::getLongitude(*msg);
   cam_gnss.altitude = etsi_its_cam_msgs::access::getAltitude(*msg);
 
-  geometry_msgs::msg::Point cam_position = autoware::geography_utils::project_forward(cam_gnss, projector_info_);
+  geometry_msgs::msg::Point cam_position = geography_utils::project_forward(cam_gnss, projector_info_);
 
-  cam_position.z =
-      autoware::geography_utils::convert_height(cam_position.z, cam_gnss.latitude, cam_gnss.longitude,
-                                                MapProjectorInfo::Message::WGS84, projector_info_.vertical_datum);
+  cam_position.z = geography_utils::convert_height(cam_position.z, cam_gnss.latitude, cam_gnss.longitude,
+                                                   MapProjectorInfo::Message::WGS84, projector_info_.vertical_datum);
 
   tf2::Quaternion cam_orientation;
   double yaw = M_PI_2 - DEG2RAD(etsi_its_cam_msgs::access::getHeading(*msg));  // Converting GNSS heading to ENU
@@ -102,8 +107,8 @@ void V2XCAMExtendedPerception::cam_callback(const etsi_its_cam_msgs::msg::CAM::S
                                  100.0;
 
   double semi_major_orientation = msg->cam.cam_parameters.basic_container.reference_position.position_confidence_ellipse
-                                     .semi_major_orientation.value /
-                                 10.0;
+                                      .semi_major_orientation.value /
+                                  10.0;
 
   RCLCPP_INFO(this->get_logger(), "semi_major_confidence = %lf", semi_major_confidence);
   RCLCPP_INFO(this->get_logger(), "semi_minor_confidence = %lf", semi_minor_confidence);
