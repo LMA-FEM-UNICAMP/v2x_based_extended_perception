@@ -2,11 +2,6 @@
 
 #include "etsi_its_msgs_utils/cam_access.hpp"  // access functions
 
-// New Autoware
-// #include <autoware/geography_utils/height.hpp>
-// #include <autoware/geography_utils/projection.hpp>
-
-// Old Autoware
 #include <geography_utils/height.hpp>
 #include <geography_utils/projection.hpp>
 

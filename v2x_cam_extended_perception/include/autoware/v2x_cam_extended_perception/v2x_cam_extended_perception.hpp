@@ -3,11 +3,6 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-// New Autoware
-// #include <autoware/component_interface_specs_universe/map.hpp>
-// #include <autoware/component_interface_utils/rclcpp.hpp>
-
-// Old Autoware
 #include <component_interface_specs/map.hpp>
 #include <component_interface_utils/rclcpp.hpp>
 
