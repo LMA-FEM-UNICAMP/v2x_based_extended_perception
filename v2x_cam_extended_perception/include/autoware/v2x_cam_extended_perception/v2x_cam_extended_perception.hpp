@@ -6,6 +6,8 @@
 #include <component_interface_specs/map.hpp>
 #include <component_interface_utils/rclcpp.hpp>
 
+#include <map_height_fitter/map_height_fitter.hpp>
+
 #include "autoware_perception_msgs/msg/detected_objects.hpp"
 #include "etsi_its_cam_msgs/msg/cam.hpp"
 
@@ -29,6 +31,8 @@ public:
 private:
   bool received_map_projector_info_;
   MapProjectorInfo::Message projector_info_;
+  
+  map_height_fitter::MapHeightFitter fitter_;
 
   /* ROS2 entities*/
   rclcpp::Subscription<etsi_its_cam_msgs::msg::CAM>::SharedPtr cam_sub_;

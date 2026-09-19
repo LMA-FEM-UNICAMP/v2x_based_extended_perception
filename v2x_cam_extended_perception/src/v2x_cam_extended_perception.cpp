@@ -26,7 +26,7 @@
 namespace autoware::v2x_cam_extended_perception
 {
 V2XCAMExtendedPerception::V2XCAMExtendedPerception(const rclcpp::NodeOptions& node_options)
-  : rclcpp::Node("v2x_cam_extended_perception", node_options)
+  : rclcpp::Node("v2x_cam_extended_perception", node_options), fitter_(this)
 {
   RCLCPP_INFO(this->get_logger(), "Starting v2x_cam_extended_perception class...");
 
@@ -74,8 +74,16 @@ void V2XCAMExtendedPerception::cam_callback(const etsi_its_cam_msgs::msg::CAM::S
 
   geometry_msgs::msg::Point cam_position = geography_utils::project_forward(cam_gnss, projector_info_);
 
-  cam_position.z = geography_utils::convert_height(cam_position.z, cam_gnss.latitude, cam_gnss.longitude,
-                                                   MapProjectorInfo::Message::WGS84, projector_info_.vertical_datum);
+  /// Map matching z
+  const auto fitted = fitter_.fit(cam_position, "map");
+  if (fitted)
+  {
+    cam_position = fitted.value();
+  }
+
+  // Georeferenced height (probability will not fit map, GNSS position is bad, height is worst)
+  //// cam_position.z = geography_utils::convert_height(cam_position.z, cam_gnss.latitude, cam_gnss.longitude,
+  ////                                                  MapProjectorInfo::Message::WGS84, projector_info_.vertical_datum);
 
   tf2::Quaternion cam_orientation;
   double yaw = M_PI_2 - DEG2RAD(etsi_its_cam_msgs::access::getHeading(*msg));  // Converting GNSS heading to ENU
