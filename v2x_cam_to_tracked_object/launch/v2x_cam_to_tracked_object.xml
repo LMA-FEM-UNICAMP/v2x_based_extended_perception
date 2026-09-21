@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<launch>
-
-  <node pkg="v2x_cam_to_tracked_object" exec="v2x_cam_to_tracked_object" name="v2x_cam_to_tracked_object" output="both">
-  </node>
-</launch>
