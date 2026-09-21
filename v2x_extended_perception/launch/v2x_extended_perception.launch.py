@@ -20,17 +20,17 @@ def launch_setup(context, *args, **kwargs):
     launch_items = []
 
     params_etsi = os.path.join(
-        get_package_share_directory("v2x_cam_extended_perception"),
+        get_package_share_directory("v2x_extended_perception"),
         "config",
         "etsi_its_messages.param.yaml",
     )
     params_udp_sender = os.path.join(
-        get_package_share_directory("v2x_cam_extended_perception"),
+        get_package_share_directory("v2x_extended_perception"),
         "config",
         "udp_driver_sender.param.yaml",
     )
     params_udp_receiver = os.path.join(
-        get_package_share_directory("v2x_cam_extended_perception"),
+        get_package_share_directory("v2x_extended_perception"),
         "config",
         "udp_driver_receiver.param.yaml",
     )
@@ -41,30 +41,32 @@ def launch_setup(context, *args, **kwargs):
     )
 
     udp_lifecycle_transitions_script_path = os.path.join(
-        get_package_share_directory("v2x_cam_extended_perception"),
+        get_package_share_directory("v2x_extended_perception"),
         "scripts",
         "udp_lifecyclenode_transtions.sh",
     )
+    
+    if LaunchConfiguration("launch_cam_perception").perform(context).lower() == "true":
 
-    v2x_cam_extended_perception = Node(
-        package="v2x_cam_extended_perception",
-        executable="v2x_cam_extended_perception",
-        namespace="v2x",
-        name="v2x_cam_extended_perception",
-        parameters=[params_v2x_cam_extended_perception],
-        remappings=[("cam/out", "/v2x/parser/etsi_parser/cam/out")],
-        output="both",
-    )
-    launch_items.append(v2x_cam_extended_perception)
+        v2x_cam_extended_perception = Node(
+            package="v2x_cam_extended_perception",
+            executable="v2x_cam_extended_perception",
+            namespace="v2x",
+            name="v2x_cam_extended_perception",
+            parameters=[params_v2x_cam_extended_perception],
+            remappings=[("cam/out", "/v2x/parser/etsi_parser/cam/out")],
+            output="both",
+        )
+        launch_items.append(v2x_cam_extended_perception)
 
-    launch_items.append(
-        RegisterEventHandler(
-            event_handler=OnProcessExit(
-                target_action=v2x_cam_extended_perception,
-                on_exit=[EmitEvent(event=Shutdown())],
+        launch_items.append(
+            RegisterEventHandler(
+                event_handler=OnProcessExit(
+                    target_action=v2x_cam_extended_perception,
+                    on_exit=[EmitEvent(event=Shutdown())],
+                )
             )
         )
-    )
 
     if LaunchConfiguration("launch_drivers").perform(context).lower() == "true":
 
@@ -138,6 +140,7 @@ def generate_launch_description():
     return LaunchDescription(
         [
             DeclareLaunchArgument("launch_drivers", default_value="true"),
+            DeclareLaunchArgument("launch_cam_perception", default_value="true"),
         ]
         + [OpaqueFunction(function=launch_setup)]
     )
