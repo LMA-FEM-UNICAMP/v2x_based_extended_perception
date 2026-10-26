@@ -2,7 +2,9 @@
 
 ETSI CAM message perception for Autoware.
 
-> Under development...
+## Dependencies
+
+- Autoware Map Loader
 
 ## Acknowledgments
 

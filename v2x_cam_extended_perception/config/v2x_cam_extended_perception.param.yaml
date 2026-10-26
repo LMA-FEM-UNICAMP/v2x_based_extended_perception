@@ -2,3 +2,7 @@
   ros__parameters:
     base_frame: base_link
     map_frame: map
+
+    # map_height_fitter configuration
+    map_height_fitter.target: pointcloud_map
+    map_height_fitter.map_loader_name: /map/pointcloud_map_loader

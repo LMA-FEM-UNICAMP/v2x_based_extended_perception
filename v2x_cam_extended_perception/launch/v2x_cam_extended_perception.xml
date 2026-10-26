@@ -2,5 +2,8 @@
 <launch>
 
   <node pkg="v2x_cam_extended_perception" exec="v2x_cam_extended_perception" name="v2x_cam_extended_perception" output="both">
+    <param name="map_height_fitter.map_loader_name" value="/map/pointcloud_map_loader"/>
+    <param name="map_height_fitter.target" value="$(var gnss_initial_pose_auto_fix_target)"/>
   </node>
+
 </launch>

@@ -3,8 +3,10 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-#include <autoware/component_interface_specs_universe/map.hpp>
-#include <autoware/component_interface_utils/rclcpp.hpp>
+#include <component_interface_specs/map.hpp>
+#include <component_interface_utils/rclcpp.hpp>
+
+#include <map_height_fitter/map_height_fitter.hpp>
 
 #include "autoware_perception_msgs/msg/detected_objects.hpp"
 #include "etsi_its_cam_msgs/msg/cam.hpp"
@@ -13,7 +15,7 @@ namespace autoware::v2x_cam_extended_perception
 {
 class V2XCAMExtendedPerception : public rclcpp::Node
 {
-  using MapProjectorInfo = autoware::component_interface_specs_universe::map::MapProjectorInfo;
+  using MapProjectorInfo = map_interface::MapProjectorInfo;
 
 public:
   explicit V2XCAMExtendedPerception(const rclcpp::NodeOptions& node_options);
@@ -29,10 +31,12 @@ public:
 private:
   bool received_map_projector_info_;
   MapProjectorInfo::Message projector_info_;
+  
+  map_height_fitter::MapHeightFitter fitter_;
 
   /* ROS2 entities*/
   rclcpp::Subscription<etsi_its_cam_msgs::msg::CAM>::SharedPtr cam_sub_;
-  autoware::component_interface_utils::Subscription<MapProjectorInfo>::SharedPtr map_projector_info_sub_;
+  component_interface_utils::Subscription<MapProjectorInfo>::SharedPtr map_projector_info_sub_;
   rclcpp::Publisher<autoware_perception_msgs::msg::DetectedObjects>::SharedPtr detected_objects_pub_;
 };
 }  // namespace autoware::v2x_cam_extended_perception
