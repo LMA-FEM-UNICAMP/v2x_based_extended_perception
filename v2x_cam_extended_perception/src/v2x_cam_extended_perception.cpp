@@ -2,8 +2,8 @@
 
 #include "etsi_its_msgs_utils/cam_access.hpp"  // access functions
 
-#include <geography_utils/height.hpp>
-#include <geography_utils/projection.hpp>
+#include <autoware/geography_utils/height.hpp>
+#include <autoware/geography_utils/projection.hpp>
 
 #include <tf2/LinearMath/Quaternion.hpp>
 
@@ -31,7 +31,7 @@ V2XCAMExtendedPerception::V2XCAMExtendedPerception(const rclcpp::NodeOptions& no
   RCLCPP_INFO(this->get_logger(), "Starting v2x_cam_extended_perception class...");
 
   // Subscribe to map_projector_info topic
-  const auto adaptor = component_interface_utils::NodeAdaptor(this);
+  const auto adaptor = autoware::component_interface_utils::NodeAdaptor(this);
   adaptor.init_sub(map_projector_info_sub_,
                    [this](const MapProjectorInfo::Message::ConstSharedPtr msg) { callback_map_projector_info(msg); });
 
@@ -72,7 +72,7 @@ void V2XCAMExtendedPerception::cam_callback(const etsi_its_cam_msgs::msg::CAM::S
   cam_gnss.longitude = etsi_its_cam_msgs::access::getLongitude(*msg);
   cam_gnss.altitude = etsi_its_cam_msgs::access::getAltitude(*msg);
 
-  geometry_msgs::msg::Point cam_position = geography_utils::project_forward(cam_gnss, projector_info_);
+  geometry_msgs::msg::Point cam_position = autoware::geography_utils::project_forward(cam_gnss, projector_info_);
 
   /// Map matching z
   const auto fitted = fitter_.fit(cam_position, "map");
